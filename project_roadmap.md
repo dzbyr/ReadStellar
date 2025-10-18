@@ -1,4 +1,4 @@
-# Stellar-Based Book Reading Application - Project Plan (v2)
+# Stellar-Based Book Reading Application - Project Plan (v3)
 
 ## 📚 Project Concept: "ReadChain" or "BookBadge"
 
@@ -76,7 +76,6 @@
 - Review rewards:
   * Basic review = +25 READ bonus
   * Quality review = +50 READ bonus + eligible for review badges
-
 
 #### 3. Token Economy
 
@@ -156,57 +155,72 @@ Premium Tier (Token-Based):
 - ✅ Makes yearly goals meaningful
 - ✅ Reduces server/bandwidth costs for MVP
 - ✅ Users are more intentional about book selection
-### Stellar Integration (Revised)
 
-#### 1. NFT Badge System (Simplified)
-```
-Asset Structure:
-- Main badge asset: "READBADGE" (single trustline for all badges)
-- Badge differentiation via metadata in memo field
-- Each badge mint includes:
-  * Badge ID (unique)
-  * Badge type/category
-  * Year (if applicable)
-  * Achievement date
-  * Book reference (if applicable)
+### Stellar Integration with Soroban Smart Contracts
 
-Technical Implementation:
-- Asset Code: "READBADGE" (under 12 chars ✓)
-- Issuer Account: Platform master account
-- Distribution: Automated distribution account
-- Metadata: Book information, completion date stored in IPFS
-- IPFS hash in transaction memo
-- Amount: 0.0000001 READBADGE per badge (effectively indivisible)
-```
+#### 1. Smart Contract Architecture (Rust + Soroban SDK)
 
-#### 2. READ Token
-```
-Asset Code: "READ"
-Issuer: Platform token account
-Platform native token
-Initial Supply: 100,000,000 READ
-Distribution:
-- 40% User rewards pool
-- 30% Development & operations
-- 20% Marketing & partnerships
-- 10% Team (2-year vesting)
+**Core Contract Functions:**
+```rust
+// Badge Management
+pub fn mint_badge(env: Env, user: Address, badge_type: Symbol, metadata: String) -> Result<u64, Error>
+pub fn get_user_badges(env: Env, user: Address) -> Vec<Badge>
+pub fn verify_badge_ownership(env: Env, user: Address, badge_id: u64) -> bool
+
+// Token Operations
+pub fn mint_read_tokens(env: Env, user: Address, amount: i128) -> Result<(), Error>
+pub fn transfer_read_tokens(env: Env, from: Address, to: Address, amount: i128) -> Result<(), Error>
+pub fn get_token_balance(env: Env, user: Address) -> i128
+
+// Reading Progress
+pub fn record_completion(env: Env, user: Address, book_id: String, quiz_score: u32) -> Result<(), Error>
+pub fn get_reading_stats(env: Env, user: Address) -> ReadingStats
+
+// Goal Tracking
+pub fn set_yearly_goal(env: Env, user: Address, goal: u32, year: u32) -> Result<(), Error>
+pub fn get_goal_progress(env: Env, user: Address, year: u32) -> GoalProgress
 ```
 
-#### 3. Smart Features
+**Contract Data Structures:**
+```rust
+pub struct Badge {
+    pub id: u64,
+    pub badge_type: Symbol,
+    pub owner: Address,
+    pub metadata: String,
+    pub mint_date: u64,
+}
 
-**Automatic Badge Distribution (Not Claimable):**
-- When user earns badge, platform automatically sends
-- Platform pays transaction fees
-- Better UX, no friction
-- User only needs ONE trustline to READBADGE asset
+pub struct ReadingStats {
+    pub total_books: u32,
+    pub yearly_books: u32,
+    pub current_streak: u32,
+    pub total_read_earned: i128,
+}
 
-**Multi-sig Security:**
-- Multi-signature system for platform administrators
-- 2-of-3 multisig for issuer accounts
-- Prevents single point of failure
-- Secure badge minting
+pub struct GoalProgress {
+    pub goal: u32,
+    pub completed: u32,
+    pub percentage: u32,
+}
+```
 
-**Transaction Memo Standards:**
+#### 2. Asset Structure
+```
+READ Token:
+- Asset Code: "READ"
+- Type: Soroban Token (SAC - Stellar Asset Contract)
+- Issuer: Platform contract account
+- Initial Supply: 100,000,000 READ
+
+READBADGE NFTs:
+- Managed via Soroban contract
+- Each badge is a unique entry in contract storage
+- Metadata stored on-chain or IPFS hash reference
+- Badge ID: Sequential counter
+```
+
+#### 3. Transaction Memo Standards
 ```json
 {
   "type": "badge_mint",
@@ -218,7 +232,7 @@ Distribution:
 }
 ```
 
-### Yearly Goal System (New Feature)
+### Yearly Goal System
 
 #### How It Works:
 
@@ -277,46 +291,67 @@ Benefits:
 
 ## Application Architecture
 
-#### Frontend:
-- Mobile application (React Native) for iOS + Android
-- Web application (React + TypeScript)
-- **Key Screens:**
-  * Book library view & discovery
-  * E-book reader (reading screen) with progress tracker
-  * Badge collection page (filterable by type/year)
-  * Yearly goal dashboard with charts
-  * Leaderboard (ranking table: yearly, all-time, friends)
-  * User profile with stats & achievements
-  * Book club & social features
+### Tech Stack
 
-#### Backend:
-- **API:** Node.js + Express or Python + FastAPI
-- **Book database**
-- **User reading data**
-- **Quiz/Test system**
-- **Stellar API integration (Horizon API)**
-- **Database:** PostgreSQL
-  * Users table
-  * Books table
-  * Reading_progress table
-  * Badges_earned table
-  * Reviews table
-  * Goals table (yearly goals tracking)
-- **File Storage:** S3 or similar for book files
-- **Metadata Storage:** IPFS for badge metadata
-- **Queue System:** Bull/BullMQ for async badge minting
+#### **Frontend:**
+- **Framework:** Next.js 14+ (App Router)
+- **Styling:** Tailwind CSS
+- **Language:** TypeScript
+- **State Management:** React Context API / Zustand
+- **Wallet Integration:** Freighter API (connect/sign only)
+- **Key Pages:**
+  * `/` - Home/Landing page
+  * `/library` - Book library view & discovery
+  * `/read/[bookId]` - E-book reader with progress tracker
+  * `/badges` - Badge collection page (filterable by type/year)
+  * `/goals` - Yearly goal dashboard with charts
+  * `/leaderboard` - Ranking table (yearly, all-time, friends)
+  * `/profile` - User profile with stats & achievements
+  * `/clubs` - Book club & social features
 
-#### Blockchain Layer:
+#### **Smart Contract:**
+- **Language:** Rust
+- **SDK:** Soroban SDK
+- **Functions:** Badge minting, token operations, reading verification
 - **Network:** Stellar Testnet
-- **Stellar account management**
-- **Badge minting & distribution system**
-- **Token transfer operations**
-- **Transaction history**
+- **Contract Types:**
+  * `badges_contract` - Badge NFT management
+  * `token_contract` - READ token operations
+  * `reading_contract` - Progress tracking & verification
+
+#### **Backend API:**
+- **Runtime:** Node.js / Bun
+- **Framework:** Next.js API Routes or separate Express/Fastify server
+- **Database:** PostgreSQL with Prisma ORM
+- **Tables:**
+  * `users` - User accounts & wallet addresses
+  * `books` - Book catalog & metadata
+  * `reading_progress` - Active reading sessions
+  * `completions` - Finished books & quiz results
+  * `badges_earned` - Badge acquisition history
+  * `reviews` - User reviews & ratings
+  * `goals` - Yearly goal tracking
+  * `book_clubs` - Community groups
+- **File Storage:** S3 / Cloudflare R2 for book files (EPUB)
+- **Caching:** Redis for session & frequently accessed data
+- **Queue System:** BullMQ for async operations (badge minting, email notifications)
+
+#### **Blockchain Layer:**
+- **Network:** Stellar Testnet (transition to Mainnet later)
+- **RPC:** Soroban RPC endpoint
+- **SDK:** stellar-sdk (JavaScript) for frontend
+- **Contract Deployment:** soroban-cli
 - **Accounts:**
-  * Master issuer (multi-sig)
-  * Distribution account (auto-sends badges)
-  * User accounts (one per user)
-- **Integration:** Stellar SDK + Horizon API
+  * Contract deployer account
+  * Platform admin account
+  * User custodial accounts (optional) or user-owned wallets
+
+#### **Development Tools:**
+- **Version Control:** Git + GitHub
+- **CI/CD:** GitHub Actions
+- **Testing:** Jest, React Testing Library, Playwright
+- **Linting:** ESLint, Prettier
+- **Contract Testing:** Rust cargo test
 
 ## Feature Suggestions
 
@@ -397,78 +432,287 @@ READ Token Packs:
 Note: Users can earn tokens for free, this is just optional shortcut
 ```
 
-## Technical Requirements
+## Technical Requirements & Development Phases
 
-#### Stellar SDK Usage:
-- JavaScript: stellar-sdk
-- Python: stellar-sdk (for backend)
-- REST API: Horizon API
-```javascript
-// Frontend (JavaScript)
-import StellarSdk from 'stellar-sdk';
+### Phase 1: Soroban Smart Contract Development (Week 1-2)
 
-// Backend (Python)
-from stellar_sdk import Server, Keypair, TransactionBuilder, Network
+**Setup:**
+1. Install Rust and Soroban CLI
+2. Initialize contract project: `soroban contract init`
+3. Set up Stellar Testnet configuration
 
-// API Interaction
-Horizon API: https://horizon.stellar.org (mainnet)
+**Contract Development:**
+```bash
+# Project structure
+/contracts
+  /badges
+    - lib.rs (main badge contract)
+    - test.rs (unit tests)
+  /token
+    - lib.rs (READ token contract)
+    - test.rs
+  /reading
+    - lib.rs (reading verification contract)
+    - test.rs
 ```
 
-#### Minimum Development Steps:
+**Deploy to Testnet:**
+```bash
+soroban contract build
+soroban contract deploy \
+  --wasm target/wasm32-unknown-unknown/release/badges.wasm \
+  --source ADMIN_SECRET_KEY \
+  --rpc-url https://soroban-testnet.stellar.org \
+  --network-passphrase "Test SDF Network ; September 2015"
+```
 
-**Phase 1: Stellar Foundation (Week 1-2)**
-1. Start with Stellar Test Network
-2. Create test accounts
-3. Define and test READBADGE asset
-4. Create and test READ token
-5. Test token economy
-6. Implement basic wallet creation for users
-7. Test badge minting & distribution
+**Contract Testing:**
+- Write Rust unit tests
+- Test all contract functions
+- Verify state changes
+- Test error handling
 
-**Phase 2: Core Backend (Week 3-4)**
-1. Set up database schema
-2. Build user authentication
-3. Implement book management system
-4. Create reading progress tracker (page/chapter tracking)
-5. Build quiz/test system
-6. Version control
+### Phase 2: Frontend Foundation (Week 3-4)
 
-**Phase 3: Blockchain Integration (Week 5-6)**
-1. Wallet generation for new users
-2. Trustline creation automation
-3. Badge minting pipeline
-4. Asset issuer account setup
-5. Distribution account setup
-6. Automatic badge sending
-7. READ token distribution system
-8. Transaction history tracking
+**Next.js Setup:**
+```bash
+npx create-next-app@latest readchain --typescript --tailwind --app
+cd readchain
+npm install @stellar/stellar-sdk @creit.tech/stellar-wallets-kit
+```
 
-**Phase 4: Frontend MVP (Week 7-9)**
-1. User registration & login
-2. Book library & EPUB reader
-3. Progress tracking UI
-4. Quiz interface
-5. Badge collection display
-6. Basic profile & stats
+**Freighter Wallet Integration:**
+```typescript
+// lib/wallet.ts
+import { isConnected, getPublicKey, signTransaction } from "@stellar/freighter-api";
 
-**Phase 5: Gamification (Week 10-11)**
-1. Yearly goal setting system
-2. Leaderboards implementation
-3. Challenge system
-4. Badge variety expansion
-5. Social features
+export async function connectWallet() {
+  if (await isConnected()) {
+    const publicKey = await getPublicKey();
+    return publicKey;
+  }
+  throw new Error("Freighter not installed");
+}
 
-**Phase 6: Testing & Launch (Week 12)**
-1. End-to-end testing
-2. Security audit
-3. Beta user testing
-4. Mainnet deployment
-5. Launch
+export async function signTx(xdr: string) {
+  const signedTx = await signTransaction(xdr, {
+    network: "TESTNET",
+    networkPassphrase: "Test SDF Network ; September 2015"
+  });
+  return signedTx;
+}
+```
 
-### Wallet Integration Options:
-- Freighter Wallet connection
-- Albedo Wallet support
-- Or your own custodial wallet
+**Contract Interaction Layer:**
+```typescript
+// lib/soroban.ts
+import * as SorobanClient from "@stellar/stellar-sdk/lib/soroban";
+
+export async function callContract(
+  contractId: string,
+  method: string,
+  args: any[]
+) {
+  const contract = new SorobanClient.Contract(contractId);
+  const operation = contract.call(method, ...args);
+  
+  // Build and submit transaction
+  // Return result
+}
+```
+
+### Phase 3: Backend API & Database (Week 5-6)
+
+**Database Schema (Prisma):**
+```prisma
+// prisma/schema.prisma
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  username      String?
+  email         String?  @unique
+  createdAt     DateTime @default(now())
+  
+  completions   BookCompletion[]
+  badges        BadgeOwnership[]
+  goals         YearlyGoal[]
+  reviews       Review[]
+}
+
+model Book {
+  id          String   @id @default(cuid())
+  title       String
+  author      String
+  isbn        String?  @unique
+  genre       String[]
+  pageCount   Int
+  epubUrl     String
+  coverUrl    String
+  
+  completions BookCompletion[]
+  quizzes     Quiz[]
+}
+
+model BookCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  bookId      String
+  startedAt   DateTime
+  completedAt DateTime?
+  quizScore   Int?
+  readingTime Int      // in minutes
+  
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+}
+
+model BadgeOwnership {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeType String
+  mintedAt  DateTime @default(now())
+  txHash    String?
+  
+  user User @relation(fields: [userId], references: [id])
+}
+```
+
+**API Routes:**
+```
+/api/auth/connect - Wallet connection
+/api/books/list - Get available books
+/api/reading/start - Start reading session
+/api/reading/progress - Update progress
+/api/reading/complete - Submit completion + quiz
+/api/badges/mint - Trigger badge minting
+/api/goals/set - Set yearly goal
+/api/leaderboard - Get rankings
+```
+
+### Phase 4: Integration & Testing (Week 7-8)
+
+**Integration Flow:**
+1. User connects Freighter wallet → Frontend calls `/api/auth/connect`
+2. User starts reading → Progress tracked in database
+3. User completes book + quiz → Backend verifies
+4. Backend calls smart contract → Badge minted on-chain
+5. Frontend updates UI → Shows new badge
+
+**End-to-End Test:**
+```typescript
+// e2e/reading-flow.spec.ts
+test("complete book and earn badge", async ({ page }) => {
+  await page.goto("/");
+  await page.click("button:has-text('Connect Wallet')");
+  // ... simulate Freighter connection
+  
+  await page.goto("/library");
+  await page.click("text=1984");
+  await page.click("text=Start Reading");
+  
+  // Simulate reading progress
+  await page.click("text=Mark as Complete");
+  
+  // Take quiz
+  await page.click("text=Answer A");
+  // ...
+  
+  await expect(page.locator("text=First Book Ever")).toBeVisible();
+});
+```
+
+### Phase 5: MVP Polish & Launch (Week 9-10)
+
+**Features to Complete:**
+- [ ] Responsive design (mobile-first)
+- [ ] Loading states & error handling
+- [ ] Book reader with page tracking
+- [ ] Quiz interface
+- [ ] Badge gallery with filters
+- [ ] Leaderboard with yearly reset
+- [ ] Goal setting dashboard
+- [ ] Profile page with stats
+
+**Security Checklist:**
+- [ ] Input validation on all API routes
+- [ ] Rate limiting (10 req/min per IP)
+- [ ] Wallet signature verification
+- [ ] Contract authorization checks
+- [ ] SQL injection prevention (via Prisma)
+- [ ] XSS protection (React automatic escaping)
+
+## 🧪 Test Scenarios
+
+### Critical Tests:
+
+#### ✅ Contract Deployment
+```bash
+# Test: Can the contract be deployed?
+soroban contract deploy --wasm badges.wasm --source ADMIN_KEY --network testnet
+# Expected: Contract ID returned
+```
+
+#### ✅ Wallet Connection
+```typescript
+// Test: Does wallet connection work?
+test("connect Freighter wallet", async () => {
+  const publicKey = await connectWallet();
+  expect(publicKey).toMatch(/^G[A-Z0-9]{55}$/);
+});
+```
+
+#### ✅ Contract Function Calls
+```typescript
+// Test: Can contract functions be called?
+test("mint badge via contract", async () => {
+  const result = await callContract(
+    BADGES_CONTRACT_ID,
+    "mint_badge",
+    [userAddress, "FIRST_BOOK", "ipfs://Qm..."]
+  );
+  expect(result).toBeDefined();
+});
+```
+
+#### ✅ Frontend-Contract Integration
+```typescript
+// Test: Does the result return to the frontend?
+test("badge appears in user collection", async () => {
+  await mintBadge(userAddress, "FIRST_BOOK");
+  const badges = await getUserBadges(userAddress);
+  expect(badges).toContainEqual(
+    expect.objectContaining({ badgeType: "FIRST_BOOK" })
+  );
+});
+```
+
+#### ✅ Full Frontend Flow
+```typescript
+// Test: Does the frontend work properly?
+test("complete reading flow", async ({ page }) => {
+  await page.goto("/library");
+  await page.click("text=Start Reading");
+  await page.fill("input[name='currentPage']", "300");
+  await page.click("text=Complete Book");
+  await page.click("text=Submit Quiz");
+  
+  await expect(page.locator(".badge-card")).toBeVisible();
+  await expect(page.locator("text=+100 READ")).toBeVisible();
+});
+```
+
+### Performance Tests:
+- [ ] Page load time < 2s
+- [ ] Contract call response < 5s
+- [ ] Database queries < 100ms
+- [ ] Book reader renders 500+ pages smoothly
+
+### Browser Compatibility:
+- [ ] Chrome/Edge (latest)
+- [ ] Firefox (latest)
+- [ ] Safari (latest)
+- [ ] Mobile Safari (iOS 15+)
+- [ ] Chrome Mobile (Android)
 
 ## Simplified MVP (Minimum Viable Product)
 
@@ -476,8 +720,8 @@ Horizon API: https://horizon.stellar.org (mainnet)
 
 **Books:**
 - Add 10-20 free books (public domain classics)
-- Simple EPUB reader
-- Basic progress tracking
+- Simple EPUB reader with page tracking
+- Basic progress persistence
 
 **Badge Types (15 total):**
 
@@ -503,185 +747,115 @@ Horizon API: https://horizon.stellar.org (mainnet)
 - Review Master (10 reviews)
 
 *Speed/Streak (2):*
-- Speed Reader (Bookworm)
-- Weekly Warrior
+- Speed Reader (finish in < 7 days)
+- Weekly Warrior (4-week streak)
 
 **Core Features:**
-- User registration with Stellar wallet
+- User registration with Freighter wallet
 - Read books with progress tracking
-- Simple quiz system (3-5 questions)
+- Simple quiz system (5 questions per book)
 - Optional review writing
-- Badge earning & collection
-- Badge collection page
+- Badge earning & minting via Soroban
+- Badge collection page with filters
 - Basic leaderboard (yearly & all-time)
 - Yearly goal setting
-- READ token earning
+- READ token earning & balance display
 - Simple profile with stats
 
 **Yearly Limitation:**
 - Free: 12 books/year
-- Premium: Unlock via READ tokens
+- Premium: Unlock via READ tokens (500/book or 5,000/year unlimited)
 
 ## Example Usage Flow
 
 **New User - First Year:**
+
 ```
 January 2025:
-1. User registers → Stellar wallet is created automatically
-2. Sets yearly goal: "I want to read 24 books in 2025"
-3. Trustline to READBADGE created (one-time, automatic)
+1. User visits app → Connects Freighter wallet
+2. Account created → Wallet address stored in database
+3. Sets yearly goal: "I want to read 24 books in 2025"
 4. Selects first book: "1984" by George Orwell
-5. Starts reading → Progress tracked
+5. Clicks "Start Reading" → Progress tracking begins
 
 January 15, 2025:
-6. Finishes "1984" (finishes the book) → Solves the quiz (takes quiz) → Scores 4/5 (80%)
+6. Marks book complete → Takes 5-question quiz → Scores 4/5 (80%)
 7. Writes a review (150 words, thoughtful)
-8. If successful, receives:
-   - "First Book Ever" badge (Badge NFT is automatically sent)
+8. Backend calls smart contract → `mint_badge()` function
+9. Receives:
+   - "First Book Ever" badge (NFT minted on Stellar Testnet)
    - 200 READ tokens (100 base + 50 review + 50 quality bonus)
-   - Earns READ tokens → Views in their collection
-   - Progress: 1/24 books toward yearly goal
+10. Badge appears in collection page
+11. Progress: 1/24 books toward yearly goal
 
 March 31, 2025:
-9. Completes 6th book this year
-10. Receives "Bronze Reader 2025" badge
-11. Progress: 6/24 books (Q1 goal: 6/6 ✓)
-12. Receives "Quarter Champion Q1 2025" badge
+12. Completes 6th book this year
+13. Contract automatically mints "Bronze Reader 2025" badge
+14. Progress: 6/24 books (Q1 goal: 6/6 ✓)
+15. Receives "Quarter Champion Q1 2025" badge
 
 July 2025:
-13. Completes 15th book
-14. Hits 12-book free limit
-15. Options:
+16. Completes 15th book
+17. Hits 12-book free limit
+18. Options:
     - Wait until next year
     - Spend 500 READ for 1 more book
     - Spend 5,000 READ for unlimited (has earned ~3,000 READ so far)
-16. Decides to earn 2,000 more READ through reviews & referrals
-17. Unlocks unlimited pass
+19. Decides to earn 2,000 more READ through reviews & referrals
+20. Unlocks unlimited pass by calling contract function
 
 December 31, 2025:
-18. Final count: 28 books (exceeded goal of 24)
-19. Receives:
+21. Final count: 28 books (exceeded goal of 24)
+22. Contract mints year-end badges:
     - "Gold Reader 2025" badge (26-50 books)
     - "Goal Crusher 2025" badge (met goal)
     - "Overachiever 2025" badge (exceeded by 16%)
     - "Consistent Reader 2025" badge (read every month)
-20. Total READ earned: ~5,600
-21. Accesses new books with tokens
-22. Can use tokens for 2026 premium pass or save for special badges
+23. Total READ earned: ~5,600 tokens
+24. Can use tokens for 2026 premium pass or special badges
+25. All badges stored on Stellar blockchain, visible in wallet
 
 January 1, 2026:
-23. Yearly count resets to 0
-24. Keeps all 2025 badges in collection
-25. Sets new goal for 2026: "30 books"
-26. New challenge begins!
+26. Yearly count resets to 0 (contract logic)
+27. Keeps all 2025 badges in collection (permanent NFTs)
+28. Sets new goal for 2026: "30 books"
+29. New challenge begins!
 ```
 
+## Development Commands
 
-## Application Architecture
+```bash
+# Contract commands
+soroban contract build
+soroban contract test
+soroban contract deploy --wasm target/wasm32-unknown-unknown/release/[contract].wasm
 
-#### **Frontend:**
-- Mobile application (React Native) or Web (React)
-- Book library view
-- Reading screen (e-book reader)
-- Badge collection page
-- Leaderboard (ranking table)
-- User profile and statistics
+# Frontend commands
+npm run dev          # Start Next.js dev server
+npm run build        # Production build
+npm run test         # Run Jest tests
+npm run test:e2e     # Run Playwright tests
 
-#### **Backend:**
-- Book database
-- User reading data
-- Quiz/Test system
-- Stellar API integration (Horizon API)
+# Database commands
+npx prisma migrate dev    # Apply migrations
+npx prisma studio         # Open database GUI
+npx prisma generate       # Generate Prisma Client
 
-#### **Blockchain Layer:**
-- Stellar account management
-- Badge minting system
-- Token transfer operations
-- Transaction history
+# Deployment
+vercel deploy        # Deploy frontend to Vercel
+# Contract deployment handled via soroban CLI
+```
 
-## Feature Suggestions
+## Resources
 
-#### **Gamification:**
+- **Soroban Docs:** https://soroban.stellar.org/docs
+- **Stellar SDK:** https://github.com/stellar/js-stellar-sdk
+- **Freighter Wallet:** https://www.freighter.app/
+- **Next.js Docs:** https://nextjs.org/docs
+- **Tailwind CSS:** https://tailwindcss.com/docs
 
-1. **Level System (yearly)**
-   - Bronze Reader (1-10 books)
-   - Silver Reader (11-25 books)
-   - Gold Reader (26-50 books)
-   - Diamond Reader (51+ books)
+---
 
-2. **Challenges**
-   - "5 Books in 30 Days"
-   - "Classics Marathon"
-   - Genre-based challenges
+## Summary
 
-3. **Social Features**
-   - Compete with friends
-   - Create book clubs
-   - Badge showcase
-   - Share reading statistics
-
-###### **Monetization:**
-1. Commission from book sales
-2. Premium membership (with monthly READ tokens)
-3. Special/Limited edition badge sales
-4. Sponsored badges for authors
-5. Advertising (optional)
-
-### Technical Requirements
-
-#### **Stellar SDK Usage:**
-- JavaScript: stellar-sdk
-- Python: stellar-sdk (for backend)
-- REST API: Horizon API
-
-#### **Minimum Development Steps:**
-
-1. **Start with Stellar Test Network**
-   - Create test accounts
-   - Define badge asset
-   - Test token economy
-
-2. **Badge Minting System**
-   - Asset issuer account
-   - Distribution account
-   - Automatic badge sending
-
-3. **Wallet Integration**
-   - Freighter Wallet connection
-   - Albedo Wallet support
-   - Or your own custodial wallet
-
-4. **Reading Tracking System**
-   - Page/chapter tracking
-   - Version control
-   - Quiz system
-
-## Simplified MVP (Minimum Viable Product)
-
-**For the start:**
-
-1. Add 10-20 free books
-2. 5 basic badge types:
-   - First Book
-   - 5 Books
-   - 10 Books
-   - 20 Books
-   - 50 Books
-   - 100 Books
-   - 200 Books
-   - Speed Reader
-   - Bookworm
-
-3. Simple quiz system (3-5 questions)
-4. READ token earning
-5. Badge collection page
-6. Simple leaderboard
-
-## Example Usage Flow
-
-1. User registers → Stellar wallet is created
-2. Selects a book → Starts reading
-3. Finishes the book → Solves the quiz
-4. If successful → Badge NFT is automatically sent
-5. Earns READ tokens → Views in their collection
-6. Accesses new books with tokens
+This updated roadmap reflects the modern tech stack with **Next.js + TypeScript + Tailwind** for frontend, **Rust + Soroban** for smart contracts, and **Freighter API** for wallet connectivity. The architecture is designed for Stellar Testnet with clear testing scenarios to validate contract deployment, wallet integration, and end-to-end functionality.
