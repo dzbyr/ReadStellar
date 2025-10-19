@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredWallet, disconnectWallet, WalletState } from '../../src/lib/wallet';
-import { completeBook, getTotalBooks, getLastBook, getGlobalCount, ContractResult } from '../../src/lib/soroban';
+import { completeBook, getTotalBooks, getLastBook, getGlobalCount, ContractResult, resetLocalState } from '../../src/lib/soroban';
 
 export default function MainPage() {
   const [walletState, setWalletState] = useState<WalletState>({
@@ -39,22 +39,37 @@ export default function MainPage() {
     
     setIsLoading(true);
     try {
+      console.log('Loading reading data for:', walletState.publicKey);
+      
+      // Check localStorage directly for debugging
+      const stored = localStorage.getItem('readstellar_state');
+      console.log('Raw localStorage data:', stored);
+      
       // Get total books
       const totalResult = await getTotalBooks(walletState.publicKey, walletState.publicKey);
+      console.log('Total books result:', totalResult);
       if (totalResult.success) {
-        setTotalBooks(totalResult.data?.result || 0);
+        const total = totalResult.data?.result || 0;
+        setTotalBooks(total);
+        console.log('Set total books to:', total);
       }
 
       // Get last book
       const lastBookResult = await getLastBook(walletState.publicKey, walletState.publicKey);
+      console.log('Last book result:', lastBookResult);
       if (lastBookResult.success) {
-        setLastBook(lastBookResult.data?.result || '');
+        const lastBook = lastBookResult.data?.result || '';
+        setLastBook(lastBook);
+        console.log('Set last book to:', lastBook);
       }
 
       // Get global count
       const globalResult = await getGlobalCount(walletState.publicKey);
+      console.log('Global count result:', globalResult);
       if (globalResult.success) {
-        setGlobalCount(globalResult.data?.result || 0);
+        const global = globalResult.data?.result || 0;
+        setGlobalCount(global);
+        console.log('Set global count to:', global);
       }
     } catch (error) {
       console.error('Error loading reading data:', error);
@@ -79,12 +94,16 @@ export default function MainPage() {
     setMessage(null);
 
     try {
+      console.log('Completing book:', bookTitle, 'for user:', walletState.publicKey);
       const result = await completeBook(bookTitle, bookTitle, walletState.publicKey);
+      console.log('Complete book result:', result);
       
       if (result.success) {
         setMessage({ type: 'success', text: `Successfully completed "${bookTitle}"!` });
         setBookTitle('');
-        // Reload data to show updated counts
+        
+        // Immediately reload data to show updated counts
+        console.log('Reloading data after book completion...');
         await loadReadingData();
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to complete book' });
@@ -154,25 +173,52 @@ export default function MainPage() {
         </div>
 
         {/* Book Completion Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Complete a Book
+        <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-100">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            📚 Complete a Book
           </h2>
           
           <div className="space-y-4">
-            <div>
-              <label htmlFor="bookTitle" className="block text-sm font-medium text-gray-700 mb-2">
-                Book Title
+            <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200 focus-within:border-indigo-300 focus-within:bg-indigo-50 transition-colors">
+              <label htmlFor="bookTitle" className="block text-lg font-bold text-gray-900 mb-4">
+                📖 Book Title
               </label>
-              <input
-                type="text"
-                id="bookTitle"
-                value={bookTitle}
-                onChange={(e) => setBookTitle(e.target.value)}
-                placeholder="Enter the book title you completed..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  id="bookTitle"
+                  value={bookTitle}
+                  onChange={(e) => setBookTitle(e.target.value)}
+                  placeholder=""
+                  className="book-title-input w-full px-4 py-4 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-700 text-lg font-semibold shadow-md"
+                  disabled={isLoading}
+                style={{
+                  fontSize: '20px',
+                  lineHeight: '1.6',
+                  color: '#000000',
+                  backgroundColor: '#ffffff',
+                  fontWeight: '700',
+                  letterSpacing: '0.025em',
+                  opacity: 1,
+                  caretColor: '#000000',
+                  border: '3px solid #1f2937',
+                  textShadow: 'none'
+                } as React.CSSProperties}
+                />
+                {!bookTitle && (
+                  <div 
+                    className="absolute inset-0 flex items-center px-4 pointer-events-none"
+                    style={{
+                      color: '#1f2937',
+                      fontSize: '20px',
+                      fontWeight: '600',
+                      lineHeight: '1.6'
+                    }}
+                  >
+                    Enter the book title you completed...
+                  </div>
+                )}
+              </div>
             </div>
             
             <button
@@ -204,6 +250,40 @@ export default function MainPage() {
               <p className="text-sm">{message.text}</p>
             </div>
           )}
+        </div>
+
+        {/* Debug Panel */}
+        <div className="bg-gray-100 rounded-2xl shadow-xl p-6 mt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Debug Information:
+          </h3>
+          <div className="text-sm text-gray-600 space-y-2">
+            <p><strong>Wallet Address:</strong> {walletState.publicKey || 'Not connected'}</p>
+            <p><strong>Total Books:</strong> {totalBooks}</p>
+            <p><strong>Last Book:</strong> "{lastBook || 'None'}"</p>
+            <p><strong>Global Count:</strong> {globalCount}</p>
+            <p><strong>Loading:</strong> {isLoading ? 'Yes' : 'No'}</p>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => {
+                resetLocalState();
+                loadReadingData();
+              }}
+              className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+            >
+              Reset All Data
+            </button>
+            <button
+              onClick={() => {
+                console.log('Manual refresh triggered');
+                loadReadingData();
+              }}
+              className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+            >
+              Refresh Data
+            </button>
+          </div>
         </div>
 
         {/* Instructions */}
