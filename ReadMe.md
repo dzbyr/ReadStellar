@@ -164,9 +164,7 @@ Phase I is complete when:
 - [ ] No critical bugs in testing
 - [ ] Running on testnet for 24+ hours without issues
 
-## 🎯 Next Steps (Phase II)
-
-After Phase I completion:
+## 🎯 Next Steps (Phase II,III,IV)
 
 - Book library with 10-20 free books
 - Quiz system for reading verification
@@ -174,6 +172,8 @@ After Phase I completion:
 - READ token economy
 - Database integration
 - Enhanced UI/UX
+
+Further detail shared in the `readstellar-memory-bank.md` file. Please refence it. 
 
 ## 📄 License
 
