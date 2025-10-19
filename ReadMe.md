@@ -173,7 +173,7 @@ Phase I is complete when:
 - Database integration
 - Enhanced UI/UX
 
-Further detail shared in the `readstellar-memory-bank.md` file. Please refence it. 
+Further detail shared in the `readstellar-memory-bank.md` and `project_roadmap.md` files. Please refence them. 
 
 ## 📄 License
 
