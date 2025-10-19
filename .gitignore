@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+page_pI_test_pass.png
+page_pI_test_pass_bigger.png
+DEPLOYMENT.md
+FreighterWalletDocs.md
+StellarDeploy.md
+PHASE_I_SUMMARY.md
+FreighterWalletDocs.md
+pdr.md
